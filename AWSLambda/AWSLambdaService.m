@@ -252,12 +252,13 @@ static AWSSynchronizedMutableDictionary *_serviceClients = nil;
                                                               service:AWSServiceLambda
                                                          useUnsafeURL:NO];
 
-        AWSSignatureV4Signer *signer = [AWSSignatureV4Signer signerWithCredentialsProvider:_configuration.credentialsProvider
+        AWSSignatureV4Signer *signer = [[AWSSignatureV4Signer alloc] initWithCredentialsProvider:_configuration.credentialsProvider
                                                                                   endpoint:_configuration.endpoint];
+        AWSNetworkingRequestInterceptor *baseInterceptor = [[AWSNetworkingRequestInterceptor alloc] initWithUserAgent:_configuration.userAgent];
+        _configuration.requestInterceptors = @[baseInterceptor, signer];
 
         _configuration.baseURL = _configuration.endpoint.URL;
         _configuration.requestSerializer = [AWSJSONRequestSerializer new];
-        _configuration.requestInterceptors = @[[AWSNetworkingRequestInterceptor new], signer];
         _configuration.retryHandler = [[AWSLambdaRequestRetryHandler alloc] initWithMaximumRetryCount:_configuration.maxRetryCount];
         _configuration.headers = @{@"Content-Type" : @"application/x-amz-json-1.0"};
 
@@ -304,10 +305,19 @@ static AWSSynchronizedMutableDictionary *_serviceClients = nil;
 - (AWSTask *)addPermission:(AWSLambdaAddPermissionRequest *)request {
     return [self invokeRequest:request
                     HTTPMethod:AWSHTTPMethodPOST
-                     URLString:@"/2015-03-31/functions/{FunctionName}/versions/HEAD/policy"
+                     URLString:@"/2015-03-31/functions/{FunctionName}/policy"
                   targetPrefix:@""
                  operationName:@"AddPermission"
                    outputClass:[AWSLambdaAddPermissionResponse class]];
+}
+
+- (AWSTask *)createAlias:(AWSLambdaCreateAliasRequest *)request {
+    return [self invokeRequest:request
+                    HTTPMethod:AWSHTTPMethodPOST
+                     URLString:@"/2015-03-31/functions/{FunctionName}/aliases"
+                  targetPrefix:@""
+                 operationName:@"CreateAlias"
+                   outputClass:[AWSLambdaAliasConfiguration class]];
 }
 
 - (AWSTask *)createEventSourceMapping:(AWSLambdaCreateEventSourceMappingRequest *)request {
@@ -328,6 +338,15 @@ static AWSSynchronizedMutableDictionary *_serviceClients = nil;
                    outputClass:[AWSLambdaFunctionConfiguration class]];
 }
 
+- (AWSTask *)deleteAlias:(AWSLambdaDeleteAliasRequest *)request {
+    return [self invokeRequest:request
+                    HTTPMethod:AWSHTTPMethodDELETE
+                     URLString:@"/2015-03-31/functions/{FunctionName}/aliases/{Name}"
+                  targetPrefix:@""
+                 operationName:@"DeleteAlias"
+                   outputClass:nil];
+}
+
 - (AWSTask *)deleteEventSourceMapping:(AWSLambdaDeleteEventSourceMappingRequest *)request {
     return [self invokeRequest:request
                     HTTPMethod:AWSHTTPMethodDELETE
@@ -346,6 +365,15 @@ static AWSSynchronizedMutableDictionary *_serviceClients = nil;
                    outputClass:nil];
 }
 
+- (AWSTask *)getAlias:(AWSLambdaGetAliasRequest *)request {
+    return [self invokeRequest:request
+                    HTTPMethod:AWSHTTPMethodGET
+                     URLString:@"/2015-03-31/functions/{FunctionName}/aliases/{Name}"
+                  targetPrefix:@""
+                 operationName:@"GetAlias"
+                   outputClass:[AWSLambdaAliasConfiguration class]];
+}
+
 - (AWSTask *)getEventSourceMapping:(AWSLambdaGetEventSourceMappingRequest *)request {
     return [self invokeRequest:request
                     HTTPMethod:AWSHTTPMethodGET
@@ -358,7 +386,7 @@ static AWSSynchronizedMutableDictionary *_serviceClients = nil;
 - (AWSTask *)getFunction:(AWSLambdaGetFunctionRequest *)request {
     return [self invokeRequest:request
                     HTTPMethod:AWSHTTPMethodGET
-                     URLString:@"/2015-03-31/functions/{FunctionName}/versions/HEAD"
+                     URLString:@"/2015-03-31/functions/{FunctionName}"
                   targetPrefix:@""
                  operationName:@"GetFunction"
                    outputClass:[AWSLambdaGetFunctionResponse class]];
@@ -367,7 +395,7 @@ static AWSSynchronizedMutableDictionary *_serviceClients = nil;
 - (AWSTask *)getFunctionConfiguration:(AWSLambdaGetFunctionConfigurationRequest *)request {
     return [self invokeRequest:request
                     HTTPMethod:AWSHTTPMethodGET
-                     URLString:@"/2015-03-31/functions/{FunctionName}/versions/HEAD/configuration"
+                     URLString:@"/2015-03-31/functions/{FunctionName}/configuration"
                   targetPrefix:@""
                  operationName:@"GetFunctionConfiguration"
                    outputClass:[AWSLambdaFunctionConfiguration class]];
@@ -376,7 +404,7 @@ static AWSSynchronizedMutableDictionary *_serviceClients = nil;
 - (AWSTask *)getPolicy:(AWSLambdaGetPolicyRequest *)request {
     return [self invokeRequest:request
                     HTTPMethod:AWSHTTPMethodGET
-                     URLString:@"/2015-03-31/functions/{FunctionName}/versions/HEAD/policy"
+                     URLString:@"/2015-03-31/functions/{FunctionName}/policy"
                   targetPrefix:@""
                  operationName:@"GetPolicy"
                    outputClass:[AWSLambdaGetPolicyResponse class]];
@@ -400,6 +428,15 @@ static AWSSynchronizedMutableDictionary *_serviceClients = nil;
                    outputClass:[AWSLambdaInvokeAsyncResponse class]];
 }
 
+- (AWSTask *)listAliases:(AWSLambdaListAliasesRequest *)request {
+    return [self invokeRequest:request
+                    HTTPMethod:AWSHTTPMethodGET
+                     URLString:@"/2015-03-31/functions/{FunctionName}/aliases"
+                  targetPrefix:@""
+                 operationName:@"ListAliases"
+                   outputClass:[AWSLambdaListAliasesResponse class]];
+}
+
 - (AWSTask *)listEventSourceMappings:(AWSLambdaListEventSourceMappingsRequest *)request {
     return [self invokeRequest:request
                     HTTPMethod:AWSHTTPMethodGET
@@ -418,13 +455,40 @@ static AWSSynchronizedMutableDictionary *_serviceClients = nil;
                    outputClass:[AWSLambdaListFunctionsResponse class]];
 }
 
+- (AWSTask *)listVersionsByFunction:(AWSLambdaListVersionsByFunctionRequest *)request {
+    return [self invokeRequest:request
+                    HTTPMethod:AWSHTTPMethodGET
+                     URLString:@"/2015-03-31/functions/{FunctionName}/versions"
+                  targetPrefix:@""
+                 operationName:@"ListVersionsByFunction"
+                   outputClass:[AWSLambdaListVersionsByFunctionResponse class]];
+}
+
+- (AWSTask *)publishVersion:(AWSLambdaPublishVersionRequest *)request {
+    return [self invokeRequest:request
+                    HTTPMethod:AWSHTTPMethodPOST
+                     URLString:@"/2015-03-31/functions/{FunctionName}/versions"
+                  targetPrefix:@""
+                 operationName:@"PublishVersion"
+                   outputClass:[AWSLambdaFunctionConfiguration class]];
+}
+
 - (AWSTask *)removePermission:(AWSLambdaRemovePermissionRequest *)request {
     return [self invokeRequest:request
                     HTTPMethod:AWSHTTPMethodDELETE
-                     URLString:@"/2015-03-31/functions/{FunctionName}/versions/HEAD/policy/{StatementId}"
+                     URLString:@"/2015-03-31/functions/{FunctionName}/policy/{StatementId}"
                   targetPrefix:@""
                  operationName:@"RemovePermission"
                    outputClass:nil];
+}
+
+- (AWSTask *)updateAlias:(AWSLambdaUpdateAliasRequest *)request {
+    return [self invokeRequest:request
+                    HTTPMethod:AWSHTTPMethodPUT
+                     URLString:@"/2015-03-31/functions/{FunctionName}/aliases/{Name}"
+                  targetPrefix:@""
+                 operationName:@"UpdateAlias"
+                   outputClass:[AWSLambdaAliasConfiguration class]];
 }
 
 - (AWSTask *)updateEventSourceMapping:(AWSLambdaUpdateEventSourceMappingRequest *)request {
@@ -439,7 +503,7 @@ static AWSSynchronizedMutableDictionary *_serviceClients = nil;
 - (AWSTask *)updateFunctionCode:(AWSLambdaUpdateFunctionCodeRequest *)request {
     return [self invokeRequest:request
                     HTTPMethod:AWSHTTPMethodPUT
-                     URLString:@"/2015-03-31/functions/{FunctionName}/versions/HEAD/code"
+                     URLString:@"/2015-03-31/functions/{FunctionName}/code"
                   targetPrefix:@""
                  operationName:@"UpdateFunctionCode"
                    outputClass:[AWSLambdaFunctionConfiguration class]];
@@ -448,7 +512,7 @@ static AWSSynchronizedMutableDictionary *_serviceClients = nil;
 - (AWSTask *)updateFunctionConfiguration:(AWSLambdaUpdateFunctionConfigurationRequest *)request {
     return [self invokeRequest:request
                     HTTPMethod:AWSHTTPMethodPUT
-                     URLString:@"/2015-03-31/functions/{FunctionName}/versions/HEAD/configuration"
+                     URLString:@"/2015-03-31/functions/{FunctionName}/configuration"
                   targetPrefix:@""
                  operationName:@"UpdateFunctionConfiguration"
                    outputClass:[AWSLambdaFunctionConfiguration class]];
